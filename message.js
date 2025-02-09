@@ -70,63 +70,6 @@ module.exports = async function handleMessages(sock, message) {
         }
 
         switch (args[0]) {
-            case '!pin':
-                if (!m.message?.extendedTextMessage?.contextInfo?.stanzaId) {
-                    return sock.sendMessage(sender, { text: '⚠️ Gunakan perintah ini dengan me-reply pesan yang ingin di-pin!' }, { quoted: m });
-                }
-
-                try {
-                    const quotedMsgKey = {
-                        fromMe: false, 
-                        id: m.message.extendedTextMessage.contextInfo.stanzaId,
-                        participant: m.message.extendedTextMessage.contextInfo.participant || sender,
-                        remoteJid: m.key.remoteJid
-                    };
-
-                    console.log('🔍 Debug: Memproses pin pesan dengan key:', quotedMsgKey);
-
-                    await sock.sendMessage(m.key.remoteJid, {
-                        pin: {
-                            type: 1, // 1 = Pin, 0 = Unpin
-                            time: 86400, // 24 jam
-                            key: quotedMsgKey
-                        }
-                    });
-
-                    await sock.sendMessage(sender, { text: '📌 *Pesan berhasil di-pin selama 24 jam!*' }, { quoted: m });
-
-                } catch (error) {
-                    console.error('❌ Error saat mem-pin pesan:', error);
-                    await sock.sendMessage(sender, { text: 'Terjadi kesalahan saat mem-pin pesan. Coba lagi nanti!' }, { quoted: m });
-                }
-            break;
-
-            case '!unpin':
-                if (!m.message?.extendedTextMessage?.contextInfo?.stanzaId) {
-                    return sock.sendMessage(sender, { text: '⚠️ *Gunakan perintah ini dengan me-reply pesan yang ingin di-unpin!*' }, { quoted: m });
-                }
-
-                try {
-                    const messageKey = {
-                        remoteJid: m.key.remoteJid,
-                        fromMe: false,
-                        id: m.message.extendedTextMessage.contextInfo.stanzaId,
-                        participant: m.message.extendedTextMessage.contextInfo.participant || sender
-                    };
-
-                    await sock.sendMessage(sender, {
-                        pin: {
-                            type: 0, // Unpin message
-                            key: messageKey
-                        }
-                    });
-
-                    await sock.sendMessage(sender, { text: '📌 *Pesan berhasil di-unpin!*' }, { quoted: m });
-                } catch (error) {
-                    console.error('❌ Error saat meng-unpin pesan:', error);
-                    await sock.sendMessage(sender, { text: 'Terjadi kesalahan saat meng-unpin pesan. Coba lagi nanti!' }, { quoted: m });
-                }
-            break;
             case '!help':
                 let message = `List of Commands:\n`;
                 message += '*• !list-schedule* - View the list of course schedules\n';
@@ -312,21 +255,6 @@ module.exports = async function handleMessages(sock, message) {
                     await sock.sendMessage(sender, { text: 'Terjadi kesalahan pada sistem. Coba lagi nanti!' }, { quoted: m });
                 }
             break; 
-            case '!tagall':
-                if (isGroup) {
-                    const members = groupMetadata.participants;
-                    const mentions = members.map(member => member.id);
-                    
-                    const textMessage = 'Hello everyone! 👋';
-
-                    await sock.sendMessage(sender, {
-                        text: textMessage,
-                        mentions: mentions,
-                    });
-                } else {
-                    await sock.sendMessage(sender, { text: 'This command can only be used in a group chat.' });
-                }
-            break;  
 
             default:
             if (jadwal.hasOwnProperty(sender) && jadwal[sender].user == m.key.participant && isGroup) {
