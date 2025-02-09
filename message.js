@@ -50,6 +50,7 @@ module.exports = async function handleMessages(sock, message) {
     const hari = ["minggu", "senin", "selasa", "rabu", "kamis", "jumat", "sabtu"];
 
     if(!command) return
+    if (!isGroup) return
     if (!m.key.fromMe) {
         if (isGroup) {
             console.log(
@@ -69,6 +70,63 @@ module.exports = async function handleMessages(sock, message) {
         }
 
         switch (args[0]) {
+            case '!pin':
+                if (!m.message?.extendedTextMessage?.contextInfo?.stanzaId) {
+                    return sock.sendMessage(sender, { text: '⚠️ Gunakan perintah ini dengan me-reply pesan yang ingin di-pin!' }, { quoted: m });
+                }
+
+                try {
+                    const quotedMsgKey = {
+                        fromMe: false, 
+                        id: m.message.extendedTextMessage.contextInfo.stanzaId,
+                        participant: m.message.extendedTextMessage.contextInfo.participant || sender,
+                        remoteJid: m.key.remoteJid
+                    };
+
+                    console.log('🔍 Debug: Memproses pin pesan dengan key:', quotedMsgKey);
+
+                    await sock.sendMessage(m.key.remoteJid, {
+                        pin: {
+                            type: 1, // 1 = Pin, 0 = Unpin
+                            time: 86400, // 24 jam
+                            key: quotedMsgKey
+                        }
+                    });
+
+                    await sock.sendMessage(sender, { text: '📌 *Pesan berhasil di-pin selama 24 jam!*' }, { quoted: m });
+
+                } catch (error) {
+                    console.error('❌ Error saat mem-pin pesan:', error);
+                    await sock.sendMessage(sender, { text: 'Terjadi kesalahan saat mem-pin pesan. Coba lagi nanti!' }, { quoted: m });
+                }
+            break;
+
+            case '!unpin':
+                if (!m.message?.extendedTextMessage?.contextInfo?.stanzaId) {
+                    return sock.sendMessage(sender, { text: '⚠️ *Gunakan perintah ini dengan me-reply pesan yang ingin di-unpin!*' }, { quoted: m });
+                }
+
+                try {
+                    const messageKey = {
+                        remoteJid: m.key.remoteJid,
+                        fromMe: false,
+                        id: m.message.extendedTextMessage.contextInfo.stanzaId,
+                        participant: m.message.extendedTextMessage.contextInfo.participant || sender
+                    };
+
+                    await sock.sendMessage(sender, {
+                        pin: {
+                            type: 0, // Unpin message
+                            key: messageKey
+                        }
+                    });
+
+                    await sock.sendMessage(sender, { text: '📌 *Pesan berhasil di-unpin!*' }, { quoted: m });
+                } catch (error) {
+                    console.error('❌ Error saat meng-unpin pesan:', error);
+                    await sock.sendMessage(sender, { text: 'Terjadi kesalahan saat meng-unpin pesan. Coba lagi nanti!' }, { quoted: m });
+                }
+            break;
             case '!help':
                 let message = `List of Commands:\n`;
                 message += '*• !list-schedule* - View the list of course schedules\n';
