@@ -1,7 +1,7 @@
 const fs = require('fs');
 const moment = require('moment-timezone');
 const Groq = require("groq-sdk");
-const groq = new Groq({ apiKey: 'APIKEY_GROQ' });
+const groq = new Groq({ apiKey: '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' });
 const { text } = require('stream/consumers');
 const { color, bgcolor } = require('./lib/color');
 
@@ -17,7 +17,7 @@ async function checkData(id) {
     const data = JSON.parse(await fs.promises.readFile(path, 'utf8'));
     if (!data[id]) {
         data[id] = {
-            "senin": [], "selasa": [], "rabu": [], "kamis": [], "jumat": [], "sabtu": [], "minggu": [], "reminder": []
+            "senin": [], "selasa": [], "rabu": [], "kamis": [], "jumat": [], "sabtu": [], "minggu": [], "tugas": [], "reminder": []
         };
     }
 
@@ -293,6 +293,44 @@ module.exports = async function handleMessages(sock, message) {
                     await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
                 }
             break;
+            // case '!list-tugas':
+            //     try {
+            //         const data = await checkData(sender);
+            //         let mentions = [];
+            //         let isFound = false;
+            //         let message = `*DAFTAR TUGAS KULIAH ${groupMetadata.subject}*\n\n`;
+                    
+            //         data.forEach(p => {
+            //             if (data[sender][p].length > 0) {
+            //                 isFound = true;
+            //                 message += `📌 *${p.toUpperCase()}*\n`;
+
+            //                 data[sender][p].sort((a, b) => {
+            //                     const timeA = a.jam.split(' - ')[0].trim();
+            //                     const timeB = b.jam.split(' - ')[0].trim();
+            //                     return timeA.localeCompare(timeB);
+            //                 });
+
+            //                 data[sender][p].forEach((jadwal) => {
+            //                     const pjMentions = jadwal.pj.map(pj => `@${pj.split('@')[0]}`).join(", ");
+            //                     message += `📖 *Mata Kuliah:* ${jadwal.matkul}\n`;
+            //                     message += `🏫 *Ruangan:* ${jadwal.ruangan}\n`;
+            //                     message += `🕒 *Jam:* ${jadwal.jam} ( ${calculateSKS(jadwal.jam)} SKS )\n`;
+            //                     message += `👤 *Penanggung Jawab:* ${pjMentions}\n\n`;
+            //                     mentions.push(...jadwal.pj);
+            //                 });
+            //             }
+            //         });
+
+            //         if (!isFound) {
+            //             message = `*Jadwal belum diatur!* Gunakan perintah *!set-jadwal* untuk mengatur jadwal.`;
+            //         }
+            //         await sock.sendMessage(sender, { text: message, mentions: mentions }, { quoted: m });
+            //     } catch (error) {
+            //         console.error('❌ Error:', error);
+            //         await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
+            //     }
+            // break;
             case '!reminder':
                 try {
                     if (args.length < 3) return sock.sendMessage(sender, { text: 'Masukkan parameter tanggal dan jam (Ex: *!reminder 13/04/2025 08.00*)' }, { quoted: m });

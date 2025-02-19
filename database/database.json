@@ -1,1 +1,56 @@
-{}
+{
+  "120363150053973034@g.us": {
+    "senin": [],
+    "selasa": [
+      {
+        "matkul": "Tata Kelola Sistem Informasi",
+        "ruangan": "A10.01.02",
+        "jam": "07.00 - 09.30",
+        "pj": [
+          "62881036501919@s.whatsapp.net"
+        ]
+      },
+      {
+        "matkul": "Keamanan Sistem Informasi",
+        "ruangan": "A10.04.09",
+        "jam": "10.00 - 12.00",
+        "pj": [
+          "6289676474261@s.whatsapp.net",
+          "6281230422610@s.whatsapp.net"
+        ]
+      }
+    ],
+    "rabu": [
+      {
+        "matkul": "Testing Dan Implementasi Sistem",
+        "ruangan": "A10.04.07",
+        "jam": "07.00 - 09.30",
+        "pj": [
+          "6285645003840@s.whatsapp.net"
+        ]
+      },
+      {
+        "matkul": "Entrepreneurship",
+        "ruangan": "A10.01.02",
+        "jam": "10.00 - 11.40",
+        "pj": [
+          "6281230391107@s.whatsapp.net"
+        ]
+      },
+      {
+        "matkul": "Dasar Enterprise Resource Planning",
+        "ruangan": "A10.01.14",
+        "jam": "14.30 - 17.00",
+        "pj": [
+          "6281703443020@s.whatsapp.net",
+          "6285230240680@s.whatsapp.net"
+        ]
+      }
+    ],
+    "kamis": [],
+    "jumat": [],
+    "sabtu": [],
+    "minggu": [],
+    "reminder": []
+  }
+}
