@@ -1,7 +1,7 @@
 const fs = require('fs');
 const moment = require('moment-timezone');
 const Groq = require("groq-sdk");
-const groq = new Groq({ apiKey: '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' });
+const groq = new Groq({ apiKey: 'APIKEY_GROQ' });
 const { text } = require('stream/consumers');
 const { color, bgcolor } = require('./lib/color');
 
