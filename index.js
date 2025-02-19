@@ -52,19 +52,19 @@ async function startBot() {
             }
         });
 
-        sock.ev.on('call', async (call) => {
-            const { id, status, isVideo, from: peerJid } = call[0];
+        // sock.ev.on('call', async (call) => {
+        //     const { id, status, isVideo, from: peerJid } = call[0];
         
-            if (status === 'offer') {
-                await sock.rejectCall(id, peerJid)
+        //     if (status === 'offer') {
+        //         await sock.rejectCall(id, peerJid)
         
-                if (isVideo) {
-                    console.log(color('Video call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
-                } else {
-                    console.log(color('Voice call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
-                }
-            }
-        });
+        //         if (isVideo) {
+        //             console.log(color('Video call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
+        //         } else {
+        //             console.log(color('Voice call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
+        //         }
+        //     }
+        // });
 
         sock.ev.on('messages.upsert', async (message) => {
             const handleMessages = require('./message');
@@ -107,8 +107,8 @@ async function startBot() {
                             if (reminder.deadline === formattedNow) {
                                 await sock.sendMessage(id, { 
                                     text: `⏰ *Reminder @everyone* ⏰\nPesan ini disetting oleh @${reminder.user.split('@')[0]}\n\n${reminder.pesan}`, 
-                                    mentions: mentions
-                                });
+                                    mentions: mentions,
+                                }, { quoted: reminder.chat });
 
                                 reminder.status = 'DONE';
                             }
@@ -139,15 +139,15 @@ async function startBot() {
                             let message = `*JADWAL MATA KULIAH BESOK (${tomorrow.toUpperCase()})*\n\n`;
 
                             schedule.sort((a, b) => {
-                                const timeA = a.Jam.split(' - ')[0].trim();
-                                const timeB = b.Jam.split(' - ')[0].trim();
+                                const timeA = a.jam.split(' - ')[0].trim();
+                                const timeB = b.jam.split(' - ')[0].trim();
                                 return timeA.localeCompare(timeB);
                             });
 
                             schedule.forEach((jadwal) => {
                                 message += `📖 *Mata Kuliah:* ${jadwal.matkul}\n`;
                                 message += `🏫 *Ruangan:* ${jadwal.ruangan}\n`;
-                                message += `🕒 *Jam:* ${jadwal.Jam} ( ${calculateSKS(jadwal.Jam)} SKS )\n`;
+                                message += `🕒 *Jam:* ${jadwal.jam} ( ${calculateSKS(jadwal.jam)} SKS )\n`;
                                 message += `👤 *Penanggung Jawab:* ${jadwal.pj.map(p => `@${p.split('@')[0]}`).join(', ')}\n\n`;
                             });
 

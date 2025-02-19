@@ -8,6 +8,8 @@
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.12",
+    "groq-sdk": "^0.15.0",
+    "link-preview-js": "^3.0.14",
     "moment-timezone": "^0.5.47",
     "qrcode-terminal": "^0.12.0"
   },

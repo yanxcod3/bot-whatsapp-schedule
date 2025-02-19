@@ -1,5 +1,7 @@
 const fs = require('fs');
 const moment = require('moment-timezone');
+const Groq = require("groq-sdk");
+const groq = new Groq({ apiKey: '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' });
 const { text } = require('stream/consumers');
 const { color, bgcolor } = require('./lib/color');
 
@@ -37,6 +39,7 @@ const calculateSKS = (jam) => {
 
 module.exports = async function handleMessages(sock, message) {
     const m = message.messages[0];
+    const botNumber = sock.user.id.split(':')[0] + '@s.whatsapp.net';
     const sender = m.key.remoteJid;
     const isGroup = sender.endsWith('@g.us');
     const groupMetadata = isGroup ? await sock.groupMetadata(sender) : '';
@@ -49,8 +52,6 @@ module.exports = async function handleMessages(sock, message) {
 
     const hari = ["minggu", "senin", "selasa", "rabu", "kamis", "jumat", "sabtu"];
 
-    if(!command) return
-    if (!isGroup) return
     if (!m.key.fromMe) {
         if (isGroup) {
             console.log(
@@ -69,12 +70,102 @@ module.exports = async function handleMessages(sock, message) {
             );
         }
 
+        if (m.message && m.message.extendedTextMessage?.contextInfo?.mentionedJid?.includes(botNumber)) {
+            try {
+                let userMessage = command.replace(/@\S+/g, '').trim();
+                if (!userMessage) userMessage = "Hai, deepseek";
+                let fullMessage = quotedMsg ? `${quotedMsg}\nPerintah: "${userMessage}"` : userMessage;
+        
+                const response = await groq.chat.completions.create({
+                    messages: [
+                        { role: "system", content: "Gunakan bahasa Indonesia bila pertanyaan tidak meminta bahasa lain." },
+                        { role: "user", content: fullMessage }
+                    ],
+                    model: "deepseek-r1-distill-llama-70b",
+                    temperature: 0.8,
+                    top_p: 0.9,
+                    stream: false                    
+                });
+        
+                await sock.sendMessage(sender, { 
+                    text: response.choices?.[0]?.message?.content.replace(/###/g, '').replace(/\*\*/g, '*').replace(/<think>[\s\S]*?<\/think>/g, '').trim() || 
+                          "Maaf, saya tidak bisa memberikan jawaban saat ini." 
+                }, { quoted: m });
+            } catch (error) {
+                console.error('❌ Error:', error);
+                await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
+            }
+        }             
+
+        if(!command) return
         switch (args[0]) {
+            // case '!pin':
+            //     if (!m.message?.extendedTextMessage?.contextInfo?.stanzaId) {
+            //         return sock.sendMessage(sender, { text: '⚠️ Gunakan perintah ini dengan me-reply pesan yang ingin di-pin!' }, { quoted: m });
+            //     }
+
+            //     try {
+            //         const quotedMsgKey = {
+            //             fromMe: false, 
+            //             id: m.message.extendedTextMessage.contextInfo.stanzaId,
+            //             participant: m.message.extendedTextMessage.contextInfo.participant || sender,
+            //             remoteJid: m.key.remoteJid
+            //         };
+
+            //         console.log('🔍 Debug: Memproses pin pesan dengan key:', quotedMsgKey);
+
+            //         await sock.sendMessage(m.key.remoteJid, {
+            //             pin: {
+            //                 type: 1, // 1 = Pin, 0 = Unpin
+            //                 time: 86400, // 24 jam
+            //                 key: quotedMsgKey
+            //             }
+            //         });
+
+            //         await sock.sendMessage(sender, { text: '📌 *Pesan berhasil di-pin selama 24 jam!*' }, { quoted: m });
+
+            //     } catch (error) {
+            //         console.error('❌ Error saat mem-pin pesan:', error);
+            //         await sock.sendMessage(sender, { text: 'Terjadi kesalahan saat mem-pin pesan. Coba lagi nanti!' }, { quoted: m });
+            //     }
+            // break;
+
+            // case '!unpin':
+            //     if (!m.message?.extendedTextMessage?.contextInfo?.stanzaId) {
+            //         return sock.sendMessage(sender, { text: '⚠️ *Gunakan perintah ini dengan me-reply pesan yang ingin di-unpin!*' }, { quoted: m });
+            //     }
+
+            //     try {
+            //         const messageKey = {
+            //             remoteJid: m.key.remoteJid,
+            //             fromMe: false,
+            //             id: m.message.extendedTextMessage.contextInfo.stanzaId,
+            //             participant: m.message.extendedTextMessage.contextInfo.participant || sender
+            //         };
+
+            //         await sock.sendMessage(sender, {
+            //             pin: {
+            //                 type: 0, // Unpin message
+            //                 key: messageKey
+            //             }
+            //         });
+
+            //         await sock.sendMessage(sender, { text: '📌 *Pesan berhasil di-unpin!*' }, { quoted: m });
+            //     } catch (error) {
+            //         console.error('❌ Error saat meng-unpin pesan:', error);
+            //         await sock.sendMessage(sender, { text: 'Terjadi kesalahan saat meng-unpin pesan. Coba lagi nanti!' }, { quoted: m });
+            //     }
+            // break;
+            case '=>':
+                await sock.sendMessage(sender, { text: JSON.stringify(m, null, 2) }, { quoted: m });
+            break;
             case '!help':
-                let message = `List of Commands:\n`;
-                message += '*• !list-schedule* - View the list of course schedules\n';
-                message += '*• !set-jadwal* - Set the course schedule\n';
-                message += '*• !reminder* - Set a reminder message\n';
+                let message = `*List of Commands:*\n`;
+                message += '• *!list-jadwal* - Melihat daftar jadwal mata kuliah\n';
+                message += '• *!set-jadwal* - Menetapkan jadwal mata kuliah\n';
+                message += '• *!reminder* - Mengatur pesan pengingat\n\n';
+                message += '*Ask to AI:*\nAjukan pertanyaanmu dengan me-mention *@whatsapp bot*';
+                
                 await sock.sendMessage(sender, { text: message }, { quoted: m });
             break;
             case '!list-jadwal':
@@ -93,8 +184,8 @@ module.exports = async function handleMessages(sock, message) {
                             message += `📌 *${hariInput.toUpperCase()}*\n`;
 
                             data[sender][hariInput].sort((a, b) => {
-                                const timeA = a.Jam.split(' - ')[0].trim();
-                                const timeB = b.Jam.split(' - ')[0].trim();
+                                const timeA = a.jam.split(' - ')[0].trim();
+                                const timeB = b.jam.split(' - ')[0].trim();
                                 return timeA.localeCompare(timeB);
                             });
 
@@ -102,7 +193,7 @@ module.exports = async function handleMessages(sock, message) {
                                 const pjMentions = jadwal.pj.map(pj => `@${pj.split('@')[0]}`).join(", ");
                                 message += `📖 *Mata Kuliah:* ${jadwal.matkul}\n`;
                                 message += `🏫 *Ruangan:* ${jadwal.ruangan}\n`;
-                                message += `🕒 *Jam:* ${jadwal.Jam} ( ${calculateSKS(jadwal.Jam)} SKS )\n`;
+                                message += `🕒 *Jam:* ${jadwal.jam} ( ${calculateSKS(jadwal.jam)} SKS )\n`;
                                 message += `👤 *Penanggung Jawab:* ${pjMentions}\n\n`;
                                 mentions.push(...jadwal.pj);
                             });
@@ -119,8 +210,8 @@ module.exports = async function handleMessages(sock, message) {
                                 message += `📌 *${p.toUpperCase()}*\n`;
 
                                 data[sender][p].sort((a, b) => {
-                                    const timeA = a.Jam.split(' - ')[0].trim();
-                                    const timeB = b.Jam.split(' - ')[0].trim();
+                                    const timeA = a.jam.split(' - ')[0].trim();
+                                    const timeB = b.jam.split(' - ')[0].trim();
                                     return timeA.localeCompare(timeB);
                                 });
 
@@ -128,7 +219,7 @@ module.exports = async function handleMessages(sock, message) {
                                     const pjMentions = jadwal.pj.map(pj => `@${pj.split('@')[0]}`).join(", ");
                                     message += `📖 *Mata Kuliah:* ${jadwal.matkul}\n`;
                                     message += `🏫 *Ruangan:* ${jadwal.ruangan}\n`;
-                                    message += `🕒 *Jam:* ${jadwal.Jam} ( ${calculateSKS(jadwal.Jam)} SKS )\n`;
+                                    message += `🕒 *Jam:* ${jadwal.jam} ( ${calculateSKS(jadwal.jam)} SKS )\n`;
                                     message += `👤 *Penanggung Jawab:* ${pjMentions}\n\n`;
                                     mentions.push(...jadwal.pj);
                                 });
@@ -142,7 +233,7 @@ module.exports = async function handleMessages(sock, message) {
                     }
                 } catch (error) {
                     console.error('❌ Error:', error);
-                    await sock.sendMessage(sender, { text: 'Terjadi kesalahan pada sistem. Coba lagi nanti!' }, { quoted: m });
+                    await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
                 }
             break;
             case '!set-jadwal':
@@ -167,8 +258,8 @@ module.exports = async function handleMessages(sock, message) {
                         };
 
                         data[sender][hariInput].sort((a, b) => {
-                            const timeA = a.Jam.split(' - ')[0].trim();
-                            const timeB = b.Jam.split(' - ')[0].trim();
+                            const timeA = a.jam.split(' - ')[0].trim();
+                            const timeB = b.jam.split(' - ')[0].trim();
                             return timeA.localeCompare(timeB);
                         });
 
@@ -176,7 +267,7 @@ module.exports = async function handleMessages(sock, message) {
                             const pjMentions = jadwal.pj.map(pj => `@${pj.split('@')[0]}`).join(", ");
                             message += `📖 *Mata Kuliah:* ${jadwal.matkul}\n`;
                             message += `🏫 *Ruangan:* ${jadwal.ruangan}\n`;
-                            message += `🕒 *Jam:* ${jadwal.Jam} ( ${calculateSKS(jadwal.Jam)} SKS )\n`;
+                            message += `🕒 *Jam:* ${jadwal.jam} ( ${calculateSKS(jadwal.jam)} SKS )\n`;
                             message += `👤 *Penanggung Jawab:* ${pjMentions}\n\n`;
                             mentions.push(...jadwal.pj);
                         });
@@ -199,7 +290,7 @@ module.exports = async function handleMessages(sock, message) {
                     }
                 } catch (error) {
                     console.error('❌ Error:', error);
-                    await sock.sendMessage(sender, { text: 'Terjadi kesalahan pada sistem. Coba lagi nanti!' }, { quoted: m });
+                    await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
                 }
             break;
             case '!reminder':
@@ -222,6 +313,7 @@ module.exports = async function handleMessages(sock, message) {
 
                         data[sender]['reminder'].push({
                             user: m.key.participant,
+                            chat: m,
                             create: now.format('DD/MM/YYYY HH:mm'),
                             deadline: reminderTime.format('DD/MM/YYYY HH:mm'),
                             pesan: quotedMsg
@@ -244,6 +336,7 @@ module.exports = async function handleMessages(sock, message) {
                     
                     reminder[sender] = {
                         user: m.key.participant,
+                        chat: m,
                         tanggal: args[1],
                         jam: args[2],
                         status: 'VERIFIKASI',
@@ -252,9 +345,17 @@ module.exports = async function handleMessages(sock, message) {
                     await sock.sendMessage(sender, { text: `Kirim pesan untuk di reminder pada *tanggal ${args[1]}, jam ${args[2]}*` }, { quoted: m });
                 } catch (error) {
                     console.error('❌ Error:', error);
-                    await sock.sendMessage(sender, { text: 'Terjadi kesalahan pada sistem. Coba lagi nanti!' }, { quoted: m });
+                    await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
                 }
             break; 
+            case '!tagall':
+                const members = groupMetadata.participants;
+                const mentions = members.map(member => member.id);
+                
+                const textMessage = 'Hello *@everyone*! 👋';
+
+                await sock.sendMessage(sender, { text: textMessage, mentions: mentions });
+            break;     
 
             default:
             if (jadwal.hasOwnProperty(sender) && jadwal[sender].user == m.key.participant && isGroup) {
@@ -276,7 +377,7 @@ module.exports = async function handleMessages(sock, message) {
                             return await sock.sendMessage(sender, { text: '*Lengkapi form diatas tanpa merubah detail form!*' }, {quoted: msg});
                         } catch (error) {
                             console.error('❌ Error:', error);
-                            return await sock.sendMessage(sender, { text: 'Terjadi kesalahan pada sistem. Coba lagi nanti!' }, { quoted: m });
+                            return await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
                         }
                     } else if (jadwal[sender]?.status === 'SUKSES') {
                         jadwal[sender].status = 'SUBMIT';
@@ -301,7 +402,7 @@ module.exports = async function handleMessages(sock, message) {
                         return;
                     } catch (error) {
                         console.error('❌ Error:', error);
-                        return await sock.sendMessage(sender, { text: 'Terjadi kesalahan pada sistem. Coba lagi nanti!' }, { quoted: m });
+                        return await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
                     }
                 } else if (jadwal[sender]?.status === 'SUKSES' && command?.toUpperCase() === 'SELESAI') {
                     try {
@@ -310,8 +411,8 @@ module.exports = async function handleMessages(sock, message) {
                         let message = `*JADWAL MATA KULIAH HARI ${jadwal[sender].hari.toUpperCase()}*\n\n`;
 
                         data[sender][jadwal[sender].hari].sort((a, b) => {
-                            const timeA = a.Jam.split(' - ')[0].trim();
-                            const timeB = b.Jam.split(' - ')[0].trim();
+                            const timeA = a.jam.split(' - ')[0].trim();
+                            const timeB = b.jam.split(' - ')[0].trim();
                             return timeA.localeCompare(timeB);
                         });
 
@@ -319,7 +420,7 @@ module.exports = async function handleMessages(sock, message) {
                             const pjMentions = jadwal.pj.map(pj => `@${pj.split('@')[0]}`).join(", ");
                             message += `📖 *Mata Kuliah:* ${jadwal.matkul}\n`;
                             message += `🏫 *Ruangan:* ${jadwal.ruangan}\n`;
-                            message += `🕒 *Jam:* ${jadwal.Jam} ( ${calculateSKS(jadwal.Jam)} SKS )\n`;
+                            message += `🕒 *Jam:* ${jadwal.jam} ( ${calculateSKS(jadwal.jam)} SKS )\n`;
                             message += `👤 *Penanggung Jawab:* ${pjMentions}\n\n`;
                             mentions.push(...jadwal.pj);
                         });
@@ -327,7 +428,7 @@ module.exports = async function handleMessages(sock, message) {
                         return await sock.sendMessage(sender, { text: message, mentions: mentions }, { quoted: m });
                     } catch (error) {
                         console.error('❌ Error:', error);
-                        return await sock.sendMessage(sender, { text: 'Terjadi kesalahan pada sistem. Coba lagi nanti!' }, { quoted: m });
+                        return await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
                     }
                 }
 
@@ -353,7 +454,7 @@ module.exports = async function handleMessages(sock, message) {
                             data[sender][jadwal[sender].hari].push({
                                 matkul: match[1].trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase()),
                                 ruangan: match[2].trim(),
-                                Jam: match[3].trim().replace(/\s*-\s*/, ' - '),
+                                jam: match[3].trim().replace(/\s*-\s*/, ' - '),
                                 pj: pj
                             });
                 
@@ -365,7 +466,7 @@ module.exports = async function handleMessages(sock, message) {
                         }
                     } catch (error) {
                         console.error('❌ Error:', error);
-                        return await sock.sendMessage(sender, { text: 'Terjadi kesalahan pada sistem. Coba lagi nanti!' }, { quoted: m });
+                        return await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
                     }
                 }
             }                     
@@ -385,6 +486,7 @@ module.exports = async function handleMessages(sock, message) {
 
                         data[sender]['reminder'].push({
                             user: m.key.participant,
+                            chat: reminder[sender]?.chat,
                             create: now.format('DD/MM/YYYY HH:mm'),
                             deadline: reminderTime.format('DD/MM/YYYY HH:mm'),
                             pesan: command
@@ -410,7 +512,7 @@ module.exports = async function handleMessages(sock, message) {
                         return;
                     } catch (error) {
                         console.error('❌ Error:', error);
-                        return await sock.sendMessage(sender, { text: '❌ Terjadi kesalahan pada sistem. Coba lagi nanti!' }, { quoted: m });
+                        return await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
                     }
                 }                              
             }                 
