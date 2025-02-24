@@ -7,6 +7,7 @@ const { color, bgcolor } = require('./lib/color');
 
 const path = './database/database.json';
 let jadwal = {};
+let tugas = {};
 let reminder = {};
 
 async function checkData(id) {
@@ -36,6 +37,18 @@ const calculateSKS = (jam) => {
 
     return Math.ceil(durationInMinutes / 50);
 };
+
+function randomID(data) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result;
+    do {
+        result = '#';
+        for (let i = 0; i < 3; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+    } while (data.some(task => task.id === result));
+    return result;
+}
 
 module.exports = async function handleMessages(sock, message) {
     const m = message.messages[0];
@@ -89,7 +102,7 @@ module.exports = async function handleMessages(sock, message) {
         
                 await sock.sendMessage(sender, { 
                     text: response.choices?.[0]?.message?.content.replace(/###/g, '').replace(/\*\*/g, '*').replace(/<think>[\s\S]*?<\/think>/g, '').trim() || 
-                          "Maaf, saya tidak bisa memberikan jawaban saat ini." 
+                    "Maaf, saya tidak bisa memberikan jawaban saat ini." 
                 }, { quoted: m });
             } catch (error) {
                 console.error('❌ Error:', error);
@@ -172,24 +185,16 @@ module.exports = async function handleMessages(sock, message) {
                 try {
                     const data = await checkData(sender);
                     let mentions = [];
-                    let isFound = false;
                     let message = `*JADWAL MATA KULIAH ${groupMetadata.subject}*\n\n`;
-
                     const hariInput = args[1]?.toLowerCase();
                     
-                    if(hariInput) {
+                    if (hariInput) {
                         if (!hari.includes(hariInput)) return sock.sendMessage(sender, { text: '*Hari tidak valid!* Parameter hari:\n' + hari.join(', ') }, { quoted: m });
-                        if (data[sender][hariInput].length > 0) {
-                            isFound = true;
+                        if (data[sender][hariInput]?.length > 0) {
                             message += `📌 *${hariInput.toUpperCase()}*\n`;
-
-                            data[sender][hariInput].sort((a, b) => {
-                                const timeA = a.jam.split(' - ')[0].trim();
-                                const timeB = b.jam.split(' - ')[0].trim();
-                                return timeA.localeCompare(timeB);
-                            });
-
-                            data[sender][hariInput].forEach((jadwal) => {
+                            data[sender][hariInput].sort((a, b) => a.jam.localeCompare(b.jam));
+                            
+                            data[sender][hariInput].forEach(jadwal => {
                                 const pjMentions = jadwal.pj.map(pj => `@${pj.split('@')[0]}`).join(", ");
                                 message += `📖 *Mata Kuliah:* ${jadwal.matkul}\n`;
                                 message += `🏫 *Ruangan:* ${jadwal.ruangan}\n`;
@@ -197,25 +202,16 @@ module.exports = async function handleMessages(sock, message) {
                                 message += `👤 *Penanggung Jawab:* ${pjMentions}\n\n`;
                                 mentions.push(...jadwal.pj);
                             });
-                        }
-
-                        if (!isFound) {
+                        } else {
                             message = `*Jadwal belum diatur!* Gunakan perintah *!set-jadwal* untuk mengatur jadwal.`;
                         }
-                        await sock.sendMessage(sender, { text: message, mentions: mentions }, { quoted: m });
                     } else {
                         hari.forEach(p => {
-                            if (data[sender][p].length > 0) {
-                                isFound = true;
+                            if (data[sender][p]?.length > 0) {
                                 message += `📌 *${p.toUpperCase()}*\n`;
-
-                                data[sender][p].sort((a, b) => {
-                                    const timeA = a.jam.split(' - ')[0].trim();
-                                    const timeB = b.jam.split(' - ')[0].trim();
-                                    return timeA.localeCompare(timeB);
-                                });
-
-                                data[sender][p].forEach((jadwal) => {
+                                data[sender][p].sort((a, b) => a.jam.localeCompare(b.jam));
+                                
+                                data[sender][p].forEach(jadwal => {
                                     const pjMentions = jadwal.pj.map(pj => `@${pj.split('@')[0]}`).join(", ");
                                     message += `📖 *Mata Kuliah:* ${jadwal.matkul}\n`;
                                     message += `🏫 *Ruangan:* ${jadwal.ruangan}\n`;
@@ -225,12 +221,13 @@ module.exports = async function handleMessages(sock, message) {
                                 });
                             }
                         });
-
-                        if (!isFound) {
+                        
+                        if (!message.includes("📌")) {
                             message = `*Jadwal belum diatur!* Gunakan perintah *!set-jadwal* untuk mengatur jadwal.`;
                         }
-                        await sock.sendMessage(sender, { text: message, mentions: mentions }, { quoted: m });
                     }
+                    
+                    await sock.sendMessage(sender, { text: message, mentions: mentions }, { quoted: m });
                 } catch (error) {
                     console.error('❌ Error:', error);
                     await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
@@ -293,44 +290,88 @@ module.exports = async function handleMessages(sock, message) {
                     await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
                 }
             break;
-            // case '!list-tugas':
-            //     try {
-            //         const data = await checkData(sender);
-            //         let mentions = [];
-            //         let isFound = false;
-            //         let message = `*DAFTAR TUGAS KULIAH ${groupMetadata.subject}*\n\n`;
+            case '!list-tugas':
+                try {
+                    const data = await checkData(sender);
+                    let message = `*DAFTAR TUGAS KULIAH ${groupMetadata.subject}*\n\n`;
                     
-            //         data.forEach(p => {
-            //             if (data[sender][p].length > 0) {
-            //                 isFound = true;
-            //                 message += `📌 *${p.toUpperCase()}*\n`;
+                    if (!data[sender] || !data[sender]['tugas'].length) {
+                        message = "*Tugas tidak ada!* Gunakan perintah *!set-tugas* untuk mengatur tugas.";
+                    } else {
+                        const sortedTugas = data[sender]['tugas'].sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+                        
+                        sortedTugas.forEach(tugas => {
+                            const now = new Date();
+                            const [datePart, timePart] = tugas.deadline.split(' ');
+                            const [day, month, year] = datePart.split('/').map(Number);
+                            const [hour, minute] = timePart.split(':').map(Number);
+                            const dueDate = new Date(year, month - 1, day, hour, minute);
 
-            //                 data[sender][p].sort((a, b) => {
-            //                     const timeA = a.jam.split(' - ')[0].trim();
-            //                     const timeB = b.jam.split(' - ')[0].trim();
-            //                     return timeA.localeCompare(timeB);
-            //                 });
+                            const diff = dueDate - now;
+                            let remainingTime;
 
-            //                 data[sender][p].forEach((jadwal) => {
-            //                     const pjMentions = jadwal.pj.map(pj => `@${pj.split('@')[0]}`).join(", ");
-            //                     message += `📖 *Mata Kuliah:* ${jadwal.matkul}\n`;
-            //                     message += `🏫 *Ruangan:* ${jadwal.ruangan}\n`;
-            //                     message += `🕒 *Jam:* ${jadwal.jam} ( ${calculateSKS(jadwal.jam)} SKS )\n`;
-            //                     message += `👤 *Penanggung Jawab:* ${pjMentions}\n\n`;
-            //                     mentions.push(...jadwal.pj);
-            //                 });
-            //             }
-            //         });
+                            if (isNaN(dueDate.getTime())) {
+                                remainingTime = "Format deadline tidak valid";
+                            } else if (diff <= 0) {
+                                remainingTime = "Sudah lewat";
+                            } else {
+                                const minutes = Math.floor(diff / (1000 * 60));
+                                const hours = Math.floor(minutes / 60);
+                                const days = Math.floor(hours / 24);
+                                const weeks = Math.floor(days / 7);
+                                const months = Math.floor(days / 30);
+                            
+                                if (months > 0) {
+                                    remainingTime = `${months} bulan ${days % 30} hari lagi`;
+                                } else if (weeks > 0) {
+                                    remainingTime = `${weeks} minggu ${days % 7} hari lagi`;
+                                } else if (days > 0) {
+                                    remainingTime = `${days} hari ${hours % 24} jam lagi`;
+                                } else if (hours > 0) {
+                                    remainingTime = `${hours} jam ${minutes % 60} menit lagi`;
+                                } else {
+                                    remainingTime = `${minutes} menit lagi`;
+                                }
+                            }                            
 
-            //         if (!isFound) {
-            //             message = `*Jadwal belum diatur!* Gunakan perintah *!set-jadwal* untuk mengatur jadwal.`;
-            //         }
-            //         await sock.sendMessage(sender, { text: message, mentions: mentions }, { quoted: m });
-            //     } catch (error) {
-            //         console.error('❌ Error:', error);
-            //         await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
-            //     }
-            // break;
+                            message += `📖 *Mata Kuliah:* ${tugas.matkul} *${tugas.id}*\n`;
+                            message += `🏫 *Deadline:* ${tugas.deadline} *~${remainingTime}*\n`;
+                            message += `🕒 *Deskripsi:* ${tugas.deskripsi}\n\n`;
+                        });
+                    }
+                    
+                    await sock.sendMessage(sender, { text: message }, { quoted: m });
+                } catch (error) {
+                    console.error('❌ Error:', error);
+                    await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
+                }
+            break;            
+            case '!set-tugas':
+                if (!isAdmin) return sock.sendMessage(sender, { text: '*Hanya admin grup yang dapat menggunakan perintah ini!*' }, { quoted: m });
+                if (jadwal[sender]) {
+                    if (!jadwal[sender].user.includes(m.key.participant)) return sock.sendMessage(sender, { text: `*Setting jadwal harus bergantian!* Tunggu @${jadwal[sender].user.split('@')[0]} untuk menyelesaikan.`, mentions: [jadwal[sender].user] }, { quoted: m })
+                }
+                try {
+                    const data = await checkData(sender);
+
+                        tugas[sender] = {
+                            user: m.key.participant,
+                            status: 'SUBMIT',
+                        };
+
+                        console.log(tugas[sender])
+                        
+                        let message = `📖 *Mata Kuliah:* (Ex: Jaringan Komputer)\n`;
+                            message += `📅 *Deadline:* (Ex: 13/04/2025 08.00)\n`;
+                            message += `📝 *Deskripsi:* (Ex: Buat laporan tentang topologi jaringan dan presentasi slide)`;
+
+                        const msg = await sock.sendMessage(sender, { text: message }, {quoted: m});
+                        await sock.sendMessage(sender, { text: '*Lengkapi form diatas tanpa merubah detail form!*' }, {quoted: msg});
+                } catch (error) {
+                    console.error('❌ Error:', error);
+                    await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
+                }
+            break;
             case '!reminder':
                 try {
                     if (args.length < 3) return sock.sendMessage(sender, { text: 'Masukkan parameter tanggal dan jam (Ex: *!reminder 13/04/2025 08.00*)' }, { quoted: m });
@@ -507,7 +548,64 @@ module.exports = async function handleMessages(sock, message) {
                         return await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
                     }
                 }
-            }                     
+            }
+            
+            if (tugas.hasOwnProperty(sender) && tugas[sender].user == m.key.participant && isGroup) {
+                if (command?.toUpperCase() === 'YA') {
+                    if (tugas[sender]?.status === 'SUKSES') {
+                        tugas[sender].status = 'SUBMIT';
+                        let message = `📖 *Mata Kuliah:* (Ex: Jaringan Komputer)\n`;
+                            message += `📅 *Deadline:* (Ex: 13/04/2025 08.00)\n`;
+                            message += `📝 *Deskripsi:* (Ex: Buat laporan tentang topologi jaringan dan presentasi slide)`;
+                        const msg = await sock.sendMessage(sender, { text: message });
+                        return await sock.sendMessage(sender, { text: '*Lengkapi form diatas tanpa merubah detail form!*' }, {quoted: msg});
+                    }
+                } else if (tugas[sender]?.status === 'SUKSES' && command?.toUpperCase() === 'SELESAI') {
+                    try {
+                        delete tugas[sender];
+                        return await sock.sendMessage(sender, { text: '*Semoga harimu selalu menyenangkan :)*' }, { quoted: m });
+                    } catch (error) {
+                        console.error('❌ Error:', error);
+                        return await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
+                    }
+                }
+                
+                if (tugas[sender]?.status === 'SUBMIT') {
+                    try {
+                        const data = await checkData(sender);
+                        const regex = /📖 Mata Kuliah:\s*(.+?)\s*📅 Deadline:\s*(\d{2}\/\d{2}\/\d{4} \d{2}\.\d{2})\s*📝 Deskripsi:\s*(.+?)(?:\n|$)/;
+                        const match = command.replace(/\*/g, '').match(regex);
+
+                        if (match) {
+                            const now = moment().tz('Asia/Jakarta');
+                            const reminderTime = moment.tz(match[2], 'DD/MM/YYYY HH.mm', 'Asia/Jakarta');
+
+                            if (reminderTime.isBefore(now)) {
+                                return sock.sendMessage(sender, { text: '*Tanggal atau jam yang dimasukkan sudah berlalu!* Masukkan waktu yang valid.' }, { quoted: m });
+                            }
+
+                            const getID = await randomID(data[sender].tugas);
+                
+                            data[sender].tugas.push({
+                                id: getID,
+                                matkul: match[1].trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase()),
+                                deadline: reminderTime.format('DD/MM/YYYY HH:mm'),
+                                deskripsi: match[3]
+                            });
+                
+                            tugas[sender].status = 'SUKSES';
+                            await fs.promises.writeFile(path, JSON.stringify(data, null, 2));
+                            return await sock.sendMessage(sender, { text: `*TUGAS KULIAH ${match[1].trim().toUpperCase()} TELAH DITAMBAHKAN*\n\nIngin menambahkan tugas kuliah lainnya? *(YA / SELESAI)*` }, { quoted: m });
+                        } else {
+                            return sock.sendMessage(sender, { text: '*Detail form tidak sesuai, gunakan detail form original!*' }, { quoted: m });
+                        }
+                    } catch (error) {
+                        console.error('❌ Error:', error);
+                        return await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
+                    }
+                }
+            }                  
+            
             if (reminder.hasOwnProperty(sender) && reminder[sender].user == m.key.participant && isGroup) {
                 if (reminder[sender]?.status === 'VERIFIKASI') {
                     const now = moment().tz('Asia/Jakarta');
