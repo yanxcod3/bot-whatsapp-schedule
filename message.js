@@ -296,58 +296,51 @@ module.exports = async function handleMessages(sock, message) {
                 try {
                     const data = await checkData(sender);
                     let message = `*DAFTAR TUGAS KULIAH ${groupMetadata.subject}* (${data[sender]['tugas'].length})\n\n`;
-                    
+
                     if (!data[sender] || !data[sender]['tugas'].length) {
                         message = "*Tugas tidak ada!* Gunakan perintah *!set-tugas* untuk mengatur tugas.";
                     } else {
-                        const sortedTugas = data[sender]['tugas'].sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
-                        
-                        sortedTugas.forEach(tugas => {
-                            const now = new Date();
-                            const [datePart, timePart] = tugas.deadline.split(' ');
-                            const [day, month, year] = datePart.split('/').map(Number);
-                            const [hour, minute] = timePart.split(':').map(Number);
-                            const dueDate = new Date(year, month - 1, day, hour, minute);
+                        const sortedTugas = data[sender]['tugas'].sort((a, b) => {
+                            return moment.tz(a.deadline, 'DD/MM/YYYY HH:mm', 'Asia/Jakarta').valueOf() - 
+                                moment.tz(b.deadline, 'DD/MM/YYYY HH:mm', 'Asia/Jakarta').valueOf();
+                        });
 
-                            const diff = dueDate - now;
+                        sortedTugas.forEach(tugas => {
+                            const now = moment().tz('Asia/Jakarta');
+                            
+                            // Parsing deadline dengan zona waktu Jakarta
+                            const dueDate = moment.tz(tugas.deadline, 'DD/MM/YYYY HH:mm', 'Asia/Jakarta');
+
+                            // Hitung selisih waktu dengan moment.duration()
+                            const diff = moment.duration(dueDate.diff(now));
                             let remainingTime;
 
-                            if (isNaN(dueDate.getTime())) {
-                                remainingTime = "Format deadline tidak valid";
-                            } else if (diff <= 0) {
+                            if (diff.asSeconds() <= 0) {
                                 remainingTime = "Sudah lewat";
+                            } else if (diff.asMonths() >= 1) {
+                                remainingTime = `${Math.floor(diff.asMonths())} bulan ${diff.days()} hari lagi`;
+                            } else if (diff.asWeeks() >= 1) {
+                                remainingTime = `${Math.floor(diff.asWeeks())} minggu ${diff.days() % 7} hari lagi`;
+                            } else if (diff.asDays() >= 1) {
+                                remainingTime = `${Math.floor(diff.asDays())} hari ${diff.hours()} jam lagi`;
+                            } else if (diff.asHours() >= 1) {
+                                remainingTime = `${Math.floor(diff.asHours())} jam ${diff.minutes()} menit lagi`;
                             } else {
-                                const minutes = Math.floor(diff / (1000 * 60));
-                                const hours = Math.floor(minutes / 60);
-                                const days = Math.floor(hours / 24);
-                                const weeks = Math.floor(days / 7);
-                                const months = Math.floor(days / 30);
-                            
-                                if (months > 0) {
-                                    remainingTime = `${months} bulan ${days % 30} hari lagi`;
-                                } else if (weeks > 0) {
-                                    remainingTime = `${weeks} minggu ${days % 7} hari lagi`;
-                                } else if (days > 0) {
-                                    remainingTime = `${days} hari ${hours % 24} jam lagi`;
-                                } else if (hours > 0) {
-                                    remainingTime = `${hours} jam ${minutes % 60} menit lagi`;
-                                } else {
-                                    remainingTime = `${minutes} menit lagi`;
-                                }
-                            }                            
+                                remainingTime = `${Math.floor(diff.asMinutes())} menit lagi`;
+                            }
 
                             message += `📖 *Mata Kuliah:* ${tugas.matkul} *${tugas.id}*\n`;
                             message += `⏳ *Deadline:* ${tugas.deadline} *~${remainingTime}*\n`;
                             message += `📝 *Deskripsi:* ${tugas.deskripsi}\n\n`;
                         });
                     }
-                    
+
                     await sock.sendMessage(sender, { text: message }, { quoted: m });
                 } catch (error) {
                     console.error('❌ Error:', error);
                     await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
                 }
-            break;            
+            break;         
             case '!set-tugas':
                 if (tugas[sender]) {
                     if (!tugas[sender].user.includes(m.key.participant)) return sock.sendMessage(sender, { text: `*Setting jadwal harus bergantian!* Tunggu @${jadwal[sender].user.split('@')[0]} untuk menyelesaikan.`, mentions: [jadwal[sender].user] }, { quoted: m })
