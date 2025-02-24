@@ -176,6 +176,8 @@ module.exports = async function handleMessages(sock, message) {
                 let message = `*List of Commands:*\n`;
                 message += '• *!list-jadwal* - Melihat daftar jadwal mata kuliah\n';
                 message += '• *!set-jadwal* - Menetapkan jadwal mata kuliah\n';
+                message += '• *!list-tugas* - Melihat daftar tugas mata kuliah\n';
+                message += '• *!set-tugas* - Menetapkan tugas mata kuliah\n';
                 message += '• *!reminder* - Mengatur pesan pengingat\n\n';
                 message += '*Ask to AI:*\nAjukan pertanyaanmu dengan me-mention *@whatsapp bot*';
                 
@@ -293,7 +295,7 @@ module.exports = async function handleMessages(sock, message) {
             case '!list-tugas':
                 try {
                     const data = await checkData(sender);
-                    let message = `*DAFTAR TUGAS KULIAH ${groupMetadata.subject}*\n\n`;
+                    let message = `*DAFTAR TUGAS KULIAH ${groupMetadata.subject}* (${data[sender]['tugas'].length})\n\n`;
                     
                     if (!data[sender] || !data[sender]['tugas'].length) {
                         message = "*Tugas tidak ada!* Gunakan perintah *!set-tugas* untuk mengatur tugas.";
@@ -335,8 +337,8 @@ module.exports = async function handleMessages(sock, message) {
                             }                            
 
                             message += `📖 *Mata Kuliah:* ${tugas.matkul} *${tugas.id}*\n`;
-                            message += `🏫 *Deadline:* ${tugas.deadline} *~${remainingTime}*\n`;
-                            message += `🕒 *Deskripsi:* ${tugas.deskripsi}\n\n`;
+                            message += `⏳ *Deadline:* ${tugas.deadline} *~${remainingTime}*\n`;
+                            message += `📝 *Deskripsi:* ${tugas.deskripsi}\n\n`;
                         });
                     }
                     
@@ -347,26 +349,23 @@ module.exports = async function handleMessages(sock, message) {
                 }
             break;            
             case '!set-tugas':
-                if (!isAdmin) return sock.sendMessage(sender, { text: '*Hanya admin grup yang dapat menggunakan perintah ini!*' }, { quoted: m });
-                if (jadwal[sender]) {
-                    if (!jadwal[sender].user.includes(m.key.participant)) return sock.sendMessage(sender, { text: `*Setting jadwal harus bergantian!* Tunggu @${jadwal[sender].user.split('@')[0]} untuk menyelesaikan.`, mentions: [jadwal[sender].user] }, { quoted: m })
+                if (tugas[sender]) {
+                    if (!tugas[sender].user.includes(m.key.participant)) return sock.sendMessage(sender, { text: `*Setting jadwal harus bergantian!* Tunggu @${jadwal[sender].user.split('@')[0]} untuk menyelesaikan.`, mentions: [jadwal[sender].user] }, { quoted: m })
                 }
                 try {
-                    const data = await checkData(sender);
+                    await checkData(sender);
+                    
+                    tugas[sender] = {
+                        user: m.key.participant,
+                        status: 'SUBMIT',
+                    };
+                    
+                    let message = `📖 *Mata Kuliah:* (Ex: Jaringan Komputer)\n`;
+                        message += `⏳ *Deadline:* (Ex: 13/04/2025 08.00)\n`;
+                        message += `📝 *Deskripsi:* (Ex: Buat laporan tentang topologi jaringan dan presentasi slide)`;
 
-                        tugas[sender] = {
-                            user: m.key.participant,
-                            status: 'SUBMIT',
-                        };
-
-                        console.log(tugas[sender])
-                        
-                        let message = `📖 *Mata Kuliah:* (Ex: Jaringan Komputer)\n`;
-                            message += `📅 *Deadline:* (Ex: 13/04/2025 08.00)\n`;
-                            message += `📝 *Deskripsi:* (Ex: Buat laporan tentang topologi jaringan dan presentasi slide)`;
-
-                        const msg = await sock.sendMessage(sender, { text: message }, {quoted: m});
-                        await sock.sendMessage(sender, { text: '*Lengkapi form diatas tanpa merubah detail form!*' }, {quoted: msg});
+                    const msg = await sock.sendMessage(sender, { text: message }, {quoted: m});
+                    await sock.sendMessage(sender, { text: '*Lengkapi form diatas tanpa merubah detail form!*' }, {quoted: msg});
                 } catch (error) {
                     console.error('❌ Error:', error);
                     await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
@@ -555,7 +554,7 @@ module.exports = async function handleMessages(sock, message) {
                     if (tugas[sender]?.status === 'SUKSES') {
                         tugas[sender].status = 'SUBMIT';
                         let message = `📖 *Mata Kuliah:* (Ex: Jaringan Komputer)\n`;
-                            message += `📅 *Deadline:* (Ex: 13/04/2025 08.00)\n`;
+                            message += `⏳ *Deadline:* (Ex: 13/04/2025 08.00)\n`;
                             message += `📝 *Deskripsi:* (Ex: Buat laporan tentang topologi jaringan dan presentasi slide)`;
                         const msg = await sock.sendMessage(sender, { text: message });
                         return await sock.sendMessage(sender, { text: '*Lengkapi form diatas tanpa merubah detail form!*' }, {quoted: msg});
@@ -573,7 +572,7 @@ module.exports = async function handleMessages(sock, message) {
                 if (tugas[sender]?.status === 'SUBMIT') {
                     try {
                         const data = await checkData(sender);
-                        const regex = /📖 Mata Kuliah:\s*(.+?)\s*📅 Deadline:\s*(\d{2}\/\d{2}\/\d{4} \d{2}\.\d{2})\s*📝 Deskripsi:\s*(.+?)(?:\n|$)/;
+                        const regex = /📖 Mata Kuliah:\s*(.+?)\s*⏳ Deadline:\s*(\d{2}\/\d{2}\/\d{4} \d{2}\.\d{2})\s*📝 Deskripsi:\s*(.+?)(?:\n|$)/;
                         const match = command.replace(/\*/g, '').match(regex);
 
                         if (match) {

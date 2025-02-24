@@ -52,19 +52,19 @@ async function startBot() {
             }
         });
 
-        // sock.ev.on('call', async (call) => {
-        //     const { id, status, isVideo, from: peerJid } = call[0];
+        sock.ev.on('call', async (call) => {
+            const { id, status, isVideo, from: peerJid } = call[0];
         
-        //     if (status === 'offer') {
-        //         await sock.rejectCall(id, peerJid)
+            if (status === 'offer') {
+                await sock.rejectCall(id, peerJid)
         
-        //         if (isVideo) {
-        //             console.log(color('Video call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
-        //         } else {
-        //             console.log(color('Voice call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
-        //         }
-        //     }
-        // });
+                if (isVideo) {
+                    console.log(color('Video call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
+                } else {
+                    console.log(color('Voice call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
+                }
+            }
+        });
 
         sock.ev.on('messages.upsert', async (message) => {
             const handleMessages = require('./message');
@@ -96,61 +96,81 @@ async function startBot() {
                 const data = JSON.parse(await fs.promises.readFile('./database/database.json', 'utf-8'));
                 const now = moment().tz('Asia/Jakarta');
                 const formattedNow = now.format('DD/MM/YYYY HH:mm');
-
+                const formattedH1 = now.clone().add(1, 'day').format('DD/MM/YYYY HH:mm');
+                const formattedH1HourBefore = now.clone().add(1, 'hour').format('DD/MM/YYYY HH:mm');
+        
                 for (const id of Object.keys(data)) {
                     if (data[id]?.reminder?.length > 0) {
                         const groupMetadata = await sock.groupMetadata(id);
                         const members = groupMetadata.participants;
                         const mentions = members.map(member => member.id);
-
+        
                         for (const reminder of data[id].reminder) {
                             if (reminder.deadline === formattedNow) {
                                 await sock.sendMessage(id, { 
                                     text: `⏰ *Reminder @everyone* ⏰\nPesan ini disetting oleh @${reminder.user.split('@')[0]}\n\n${reminder.pesan}`, 
                                     mentions: mentions,
                                 }, { quoted: reminder.chat });
-
+        
                                 reminder.status = 'DONE';
                             }
-                        };
-
+                        }
                         data[id].reminder = data[id].reminder.filter(reminder => reminder.status !== 'DONE');
                     }
+        
+                    if (data[id]?.tugas?.length > 0) {
+                        const groupMetadata = await sock.groupMetadata(id);
+                        const members = groupMetadata.participants;
+                        const mentions = members.map(member => member.id);
+        
+                        for (const tugas of data[id].tugas) {
+                            if (tugas.deadline.startsWith(formattedH1)) {
+                                await sock.sendMessage(id, {
+                                    text: `⏰ *Reminder Tugas H-1* ⏰\n\n📖 *Mata Kuliah:* ${tugas.matkul}\n⏳ *Deadline:* ${tugas.deadline}\n📝 *Deskripsi:* ${tugas.deskripsi}\n\nSegera selesaikan tugasmu, *@everyone*!`,
+                                    mentions: mentions
+                                });
+                            }
+                            if (tugas.deadline === formattedH1HourBefore) {
+                                await sock.sendMessage(id, {
+                                    text: `⏰ *Reminder Tugas 1 Jam Sebelum Deadline* ⏰\n\n📖 *Mata Kuliah:* ${tugas.matkul}\n⏳ *Deadline:* ${tugas.deadline}\n📝 *Deskripsi:* ${tugas.deskripsi}\n\nSegera kumpulkan tugasmu sebelum terlambat, *@everyone*!`,
+                                    mentions: mentions
+                                });
+                            }
+                        }
+                    }
                 }
-
+        
                 await fs.promises.writeFile('./database/database.json', JSON.stringify(data, null, 2));
-                
+        
                 if (now.hour() === 18 && now.minute() === 35) {
                     const jadwal = getTomorrowSchedule(data);
-
                     if (jadwal.length > 0) {
                         for (const { tomorrow, id, schedule } of jadwal) {
                             const groupMetadata = await sock.groupMetadata(id);
                             const members = groupMetadata.participants;
                             const mentions = members.map(member => member.id);
-
+        
                             const calculateSKS = (jam) => {
                                 const [startTime, endTime] = jam.split(' - ').map(t => t.trim());
                                 const [startHour, startMinute] = startTime.split('.').map(Number);
                                 const [endHour, endMinute] = endTime.split('.').map(Number);
                                 return Math.ceil(((endHour * 60 + endMinute) - (startHour * 60 + startMinute)) / 50);
                             };
-
+        
                             let message = `*JADWAL MATA KULIAH BESOK (${tomorrow.toUpperCase()})*\n\n`;
-
                             schedule.sort((a, b) => {
                                 const timeA = a.jam.split(' - ')[0].trim();
                                 const timeB = b.jam.split(' - ')[0].trim();
                                 return timeA.localeCompare(timeB);
                             });
-
+        
                             schedule.forEach((jadwal) => {
                                 message += `📖 *Mata Kuliah:* ${jadwal.matkul}\n`;
                                 message += `🏫 *Ruangan:* ${jadwal.ruangan}\n`;
                                 message += `🕒 *Jam:* ${jadwal.jam} ( ${calculateSKS(jadwal.jam)} SKS )\n`;
                                 message += `👤 *Penanggung Jawab:* ${jadwal.pj.map(p => `@${p.split('@')[0]}`).join(', ')}\n\n`;
                             });
-
+        
                             message += `*Keep fighting 🔥, @everyone*`;
                             await sock.sendMessage(id, { text: message, mentions: mentions });
                         }
@@ -159,7 +179,7 @@ async function startBot() {
             } catch (error) {
                 console.error('❌ Error dalam pengecekan reminder atau jadwal:', error);
             }
-        }, 60000);
+        }, 60000);               
     } catch (err) {
         console.error("Error starting bot:", err);
     }
