@@ -18,7 +18,7 @@ async function checkData(id) {
     const data = JSON.parse(await fs.promises.readFile(path, 'utf8'));
     if (!data[id]) {
         data[id] = {
-            "senin": [], "selasa": [], "rabu": [], "kamis": [], "jumat": [], "sabtu": [], "minggu": [], "tugas": [], "reminder": []
+            "senin": [], "selasa": [], "rabu": [], "kamis": [], "jumat": [], "sabtu": [], "minggu": [], "tugas": [], "reminder": [], "ramadhan": false
         };
     }
 
@@ -108,8 +108,8 @@ module.exports = async function handleMessages(sock, message) {
                 console.error('❌ Error:', error);
                 await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
             }
-        }             
-
+        }  
+        
         if(!command) return
         switch (args[0]) {
             // case '!pin':
@@ -426,7 +426,20 @@ module.exports = async function handleMessages(sock, message) {
                 const textMessage = 'Hello *@everyone*! 👋';
 
                 await sock.sendMessage(sender, { text: textMessage, mentions: mentions });
-            break;     
+            break; 
+            case '!ramadhan':
+                if (args[1] === 'on') {
+                    const data = await checkData(sender);
+                    data[sender]['ramadhan'] = true;
+                    await fs.promises.writeFile(path, JSON.stringify(data, null, 2));
+                    return await sock.sendMessage(sender, { text: '*Ramadhan mode telah aktif!*' }, { quoted: m });
+                } else if (args[1] === 'off') {
+                    const data = await checkData(sender);
+                    data[sender]['ramadhan'] = false;
+                    await fs.promises.writeFile(path, JSON.stringify(data, null, 2));
+                    return await sock.sendMessage(sender, { text: '*Ramadhan mode telah dinonaktifkan!*' }, { quoted: m });
+                }
+            break;
 
             default:
             if (jadwal.hasOwnProperty(sender) && jadwal[sender].user == m.key.participant && isGroup) {

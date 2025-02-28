@@ -1,5 +1,6 @@
 const { default: makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const fs = require('fs');
+const axios = require('axios');
 const qrcode = require('qrcode-terminal');
 const moment = require('moment-timezone');
 const { nocache } = require('./lib/function');
@@ -52,19 +53,19 @@ async function startBot() {
             }
         });
 
-        sock.ev.on('call', async (call) => {
-            const { id, status, isVideo, from: peerJid } = call[0];
+        // sock.ev.on('call', async (call) => {
+        //     const { id, status, isVideo, from: peerJid } = call[0];
         
-            if (status === 'offer') {
-                await sock.rejectCall(id, peerJid)
+        //     if (status === 'offer') {
+        //         await sock.rejectCall(id, peerJid)
         
-                if (isVideo) {
-                    console.log(color('Video call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
-                } else {
-                    console.log(color('Voice call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
-                }
-            }
-        });
+        //         if (isVideo) {
+        //             console.log(color('Video call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
+        //         } else {
+        //             console.log(color('Voice call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
+        //         }
+        //     }
+        // });
 
         sock.ev.on('messages.upsert', async (message) => {
             const handleMessages = require('./message');
@@ -90,6 +91,83 @@ async function startBot() {
         
             return response;
         }    
+
+        async function getRamadhanSchedule() {
+            const data = JSON.parse(await fs.promises.readFile('./database/api.json', 'utf-8'));
+        
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const formattedDate = tomorrow.toISOString().split('T')[0];
+        
+            const api = await axios.get(`https://api.myquran.com/v2/sholat/jadwal/1638/${formattedDate}`);
+            data["data"] = api.data.data.jadwal;
+        
+            await fs.promises.writeFile('./database/api.json', JSON.stringify(data, null, 2));
+            console.log("✅ Ramadhan schedule updated for", formattedDate);
+        }
+
+        setInterval(async () => {
+            try {
+                const data = JSON.parse(await fs.promises.readFile('./database/database.json', 'utf-8'));
+                const apiData = JSON.parse(await fs.promises.readFile('./database/api.json', 'utf-8'));
+                const jadwalSholat = apiData.data;
+                
+                const now = moment().tz('Asia/Jakarta');
+                const currentTime = now.format('HH:mm');
+
+                const imsak15MinBefore = moment(jadwalSholat.imsak, 'HH:mm').subtract(15, 'minutes').format('HH:mm');
+                const maghrib30MinBefore = moment(jadwalSholat.maghrib, 'HH:mm').subtract(30, 'minutes').format('HH:mm');
+                const imsakTime = jadwalSholat.imsak;
+                const maghribTime = jadwalSholat.maghrib;
+
+                for (const id of Object.keys(data)) {
+                    if (data[id]?.ramadhan === true) {
+                        const groupMetadata = await sock.groupMetadata(id);
+                        const members = groupMetadata.participants;
+                        const mentions = members.map(member => member.id);
+                        
+                        if (now.hour() === 0 && now.minute() === 31) {
+                                await sock.sendMessage(id, { video: fs.readFileSync('./database/sound/sahur.mp4'), ptv: true, mentions: mentions }
+                            )
+                        }
+
+                        // Reminder 15 menit sebelum imsak
+                        if (currentTime === imsak15MinBefore) {
+                            await sock.sendMessage(id, {
+                                text: `⏰ *Reminder Waktu Imsak* ⏰\n\n*@everyone*\nWaktu imsak hari ini: ${jadwalSholat.imsak}\n\nSegera selesaikan sahur, waktu imsak 15 menit lagi!`,
+                                mentions: mentions
+                            });
+                        }
+
+                        // Reminder saat imsak
+                        if (currentTime === imsakTime) {
+                            await sock.sendMessage(id, {
+                                text: `🕌 *Waktu Imsak Telah Tiba* 🕌\n\n*@everyone*\nWaktu imsak telah tiba.\nSemoga puasa hari ini lancar. Aamiin ya rabbal alamin 🤲`,
+                                mentions: mentions
+                            });
+                        }
+
+                        // Reminder 30 menit sebelum maghrib
+                        if (currentTime === maghrib30MinBefore) {
+                            await sock.sendMessage(id, {
+                                text: `⏰ *Reminder Waktu Maghrib* ⏰\n\n*@everyone*\nWaktu maghrib hari ini: ${jadwalSholat.maghrib}\n\nSegera persiapkan untuk berbuka puasa, waktu maghrib 30 menit lagi!`,
+                                mentions: mentions
+                            });
+                        }
+
+                        // Reminder saat maghrib
+                        if (currentTime === maghribTime) {
+                            await sock.sendMessage(id, {
+                                text: `🕌 *Waktu Maghrib Telah Tiba* 🕌\n\n*@everyone*\nWaktu berbuka telah tiba.\nSelamat berbuka puasa 🙏\n\nاَللّٰهُمَّ لَكَ صُمْتُ وَبِكَ اٰمَنْتُ وَعَلَى رِزْقِكَ اَفْطَرْتُ`,
+                                mentions: mentions
+                            });
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Error dalam pengiriman reminder waktu sholat:', error);
+            }
+        }, 60000);
         
         setInterval(async () => {
             try {
@@ -98,7 +176,7 @@ async function startBot() {
                 const formattedNow = now.format('DD/MM/YYYY HH:mm');
                 const formattedH1 = now.clone().add(1, 'day').format('DD/MM/YYYY HH:mm');
                 const formattedH1HourBefore = now.clone().add(1, 'hour').format('DD/MM/YYYY HH:mm');
-        
+
                 for (const id of Object.keys(data)) {
                     if (data[id]?.reminder?.length > 0) {
                         const groupMetadata = await sock.groupMetadata(id);
@@ -143,6 +221,7 @@ async function startBot() {
                 await fs.promises.writeFile('./database/database.json', JSON.stringify(data, null, 2));
         
                 if (now.hour() === 18 && now.minute() === 35) {
+                    await getRamadhanSchedule();
                     const jadwal = getTomorrowSchedule(data);
                     if (jadwal.length > 0) {
                         for (const { tomorrow, id, schedule } of jadwal) {
