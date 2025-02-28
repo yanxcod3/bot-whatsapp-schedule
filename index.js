@@ -53,19 +53,19 @@ async function startBot() {
             }
         });
 
-        sock.ev.on('call', async (call) => {
-            const { id, status, isVideo, from: peerJid } = call[0];
+        // sock.ev.on('call', async (call) => {
+        //     const { id, status, isVideo, from: peerJid } = call[0];
         
-            if (status === 'offer') {
-                await sock.rejectCall(id, peerJid)
+        //     if (status === 'offer') {
+        //         await sock.rejectCall(id, peerJid)
         
-                if (isVideo) {
-                    console.log(color('Video call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
-                } else {
-                    console.log(color('Voice call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
-                }
-            }
-        });
+        //         if (isVideo) {
+        //             console.log(color('Video call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
+        //         } else {
+        //             console.log(color('Voice call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
+        //         }
+        //     }
+        // });
 
         sock.ev.on('messages.upsert', async (message) => {
             const handleMessages = require('./message');
@@ -142,7 +142,7 @@ async function startBot() {
                         // Reminder saat imsak
                         if (currentTime === imsakTime) {
                             await sock.sendMessage(id, {
-                                text: `🕌 *Waktu Imsak Telah Tiba* 🕌\n\nSemoga puasa hari ini lancar *@everyone*. Aamiin ya rabbal alamin 🤲`,
+                                text: `🕌 *Waktu Imsak Telah Tiba* 🕌\n\n*_"Di bulan Ramadhan, bukan hanya tubuh yang berpuasa, tetapi juga hati, lisan, dan pikiran dari segala keburukan."_*\n\nSemoga puasa hari ini lancar *@everyone* ✨`,
                                 mentions: mentions
                             });
                         }
