@@ -53,19 +53,19 @@ async function startBot() {
             }
         });
 
-        // sock.ev.on('call', async (call) => {
-        //     const { id, status, isVideo, from: peerJid } = call[0];
+        sock.ev.on('call', async (call) => {
+            const { id, status, isVideo, from: peerJid } = call[0];
         
-        //     if (status === 'offer') {
-        //         await sock.rejectCall(id, peerJid)
+            if (status === 'offer') {
+                await sock.rejectCall(id, peerJid)
         
-        //         if (isVideo) {
-        //             console.log(color('Video call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
-        //         } else {
-        //             console.log(color('Voice call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
-        //         }
-        //     }
-        // });
+                if (isVideo) {
+                    console.log(color('Video call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
+                } else {
+                    console.log(color('Voice call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
+                }
+            }
+        });
 
         sock.ev.on('messages.upsert', async (message) => {
             const handleMessages = require('./message');
@@ -126,7 +126,7 @@ async function startBot() {
                         const members = groupMetadata.participants;
                         const mentions = members.map(member => member.id);
                         
-                        if (now.hour() === 0 && now.minute() === 31) {
+                        if (now.hour() === 3 && now.minute() === 0) {
                                 await sock.sendMessage(id, { video: fs.readFileSync('./database/sound/sahur.mp4'), ptv: true, mentions: mentions }
                             )
                         }
@@ -134,7 +134,7 @@ async function startBot() {
                         // Reminder 15 menit sebelum imsak
                         if (currentTime === imsak15MinBefore) {
                             await sock.sendMessage(id, {
-                                text: `⏰ *Reminder Waktu Imsak* ⏰\n\n*@everyone*\nWaktu imsak hari ini: ${jadwalSholat.imsak}\n\nSegera selesaikan sahur, waktu imsak 15 menit lagi!`,
+                                text: `⏰ *Reminder Waktu Imsak* ⏰\n\nSegera selesaikan sahur *@everyone*, 15 menit lagi menuju waktu imsak!`,
                                 mentions: mentions
                             });
                         }
@@ -142,7 +142,7 @@ async function startBot() {
                         // Reminder saat imsak
                         if (currentTime === imsakTime) {
                             await sock.sendMessage(id, {
-                                text: `🕌 *Waktu Imsak Telah Tiba* 🕌\n\n*@everyone*\nWaktu imsak telah tiba.\nSemoga puasa hari ini lancar. Aamiin ya rabbal alamin 🤲`,
+                                text: `🕌 *Waktu Imsak Telah Tiba* 🕌\n\nSemoga puasa hari ini lancar *@everyone*. Aamiin ya rabbal alamin 🤲`,
                                 mentions: mentions
                             });
                         }
@@ -150,7 +150,7 @@ async function startBot() {
                         // Reminder 30 menit sebelum maghrib
                         if (currentTime === maghrib30MinBefore) {
                             await sock.sendMessage(id, {
-                                text: `⏰ *Reminder Waktu Maghrib* ⏰\n\n*@everyone*\nWaktu maghrib hari ini: ${jadwalSholat.maghrib}\n\nSegera persiapkan untuk berbuka puasa, waktu maghrib 30 menit lagi!`,
+                                text: `⏰ *Reminder Waktu Maghrib* ⏰\n\nSegera persiapkan untuk berbuka puasa *@everyone*, waktu maghrib 30 menit lagi!`,
                                 mentions: mentions
                             });
                         }
@@ -158,7 +158,7 @@ async function startBot() {
                         // Reminder saat maghrib
                         if (currentTime === maghribTime) {
                             await sock.sendMessage(id, {
-                                text: `🕌 *Waktu Maghrib Telah Tiba* 🕌\n\n*@everyone*\nWaktu berbuka telah tiba.\nSelamat berbuka puasa 🙏\n\nاَللّٰهُمَّ لَكَ صُمْتُ وَبِكَ اٰمَنْتُ وَعَلَى رِزْقِكَ اَفْطَرْتُ`,
+                                text: `🕌 *Waktu Maghrib Telah Tiba* 🕌\n\nSelamat berbuka puasa *@everyone*.\n\nاَللّٰهُمَّ لَكَ صُمْتُ وَبِكَ اٰمَنْتُ وَعَلَى رِزْقِكَ اَفْطَرْتُ`,
                                 mentions: mentions
                             });
                         }

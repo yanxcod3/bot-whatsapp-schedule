@@ -109,7 +109,7 @@ module.exports = async function handleMessages(sock, message) {
                 await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
             }
         }  
-        
+
         if(!command) return
         switch (args[0]) {
             // case '!pin':
@@ -169,9 +169,6 @@ module.exports = async function handleMessages(sock, message) {
             //         await sock.sendMessage(sender, { text: 'Terjadi kesalahan saat meng-unpin pesan. Coba lagi nanti!' }, { quoted: m });
             //     }
             // break;
-            case '=>':
-                await sock.sendMessage(sender, { text: JSON.stringify(m, null, 2) }, { quoted: m });
-            break;
             case '!help':
                 let message = `*List of Commands:*\n`;
                 message += '• *!list-jadwal* - Melihat daftar jadwal mata kuliah\n';
@@ -430,14 +427,20 @@ module.exports = async function handleMessages(sock, message) {
             case '!ramadhan':
                 if (args[1] === 'on') {
                     const data = await checkData(sender);
+                    if (data[sender]['ramadhan'] === true) return await sock.sendMessage(sender, { text: '*Ramadhan mode sudah aktif!*' }, { quoted: m });
                     data[sender]['ramadhan'] = true;
                     await fs.promises.writeFile(path, JSON.stringify(data, null, 2));
-                    return await sock.sendMessage(sender, { text: '*Ramadhan mode telah aktif!*' }, { quoted: m });
+                    return await sock.sendMessage(sender, { 
+                        text: '*🌙 Ramadhan Mode Aktif 🌙*\n\nSelamat menjalankan ibadah puasa bagi yang menunaikan. Semoga diberikan kelancaran dan keberkahan. 🙏✨' 
+                    }, { quoted: m });
                 } else if (args[1] === 'off') {
                     const data = await checkData(sender);
+                    if (data[sender]['ramadhan'] === false) return await sock.sendMessage(sender, { text: '*Ramadhan mode sudah nonaktif!*' }, { quoted: m });
                     data[sender]['ramadhan'] = false;
                     await fs.promises.writeFile(path, JSON.stringify(data, null, 2));
-                    return await sock.sendMessage(sender, { text: '*Ramadhan mode telah dinonaktifkan!*' }, { quoted: m });
+                    return await sock.sendMessage(sender, { 
+                        text: '*🌙 Ramadhan Mode Nonaktif 🌙*\n\nSemoga hari-harimu tetap penuh berkah dan kebahagiaan. 😊✨' 
+                    }, { quoted: m });
                 }
             break;
 
