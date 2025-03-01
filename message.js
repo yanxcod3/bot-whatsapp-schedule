@@ -1,9 +1,11 @@
+const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
 const fs = require('fs');
 const moment = require('moment-timezone');
 const Groq = require("groq-sdk");
 const groq = new Groq({ apiKey: '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' });
 const { text } = require('stream/consumers');
 const { color, bgcolor } = require('./lib/color');
+const { default: axios } = require('axios');
 
 const path = './database/database.json';
 let jadwal = {};
@@ -58,6 +60,7 @@ module.exports = async function handleMessages(sock, message) {
     const groupMetadata = isGroup ? await sock.groupMetadata(sender) : '';
     const admins = isGroup ? groupMetadata.participants.filter(participant => participant.admin === 'admin' || participant.admin === 'superadmin').map(admin => admin.id) : '';
     const isAdmin = admins.includes(m.key.participant)
+    const isOwner = m.key.participant === '6285645319608@s.whatsapp.net';
     const command = m.message?.conversation || m.message?.extendedTextMessage?.text;
     const args = command?.toLowerCase().split(' ');
     
@@ -112,6 +115,67 @@ module.exports = async function handleMessages(sock, message) {
 
         if(!command) return
         switch (args[0]) {
+            case '!set-video':
+                if (!isOwner) return
+                try {
+                    if (args[1]) {
+                        if (!args[1].trim().startsWith('http')) {
+                            return await sock.sendMessage(sender, { text: '❌ URL tidak valid! Kirim URL TikTok yang benar.' }, { quoted: m });
+                        }
+
+                        const response = await axios.get(`https://api.agatz.xyz/api/tiktok?url=${args[1].trim()}`);
+                        if (!response.data.data.data[1].url) {
+                            return await sock.sendMessage(sender, { text: '❌ Gagal mendapatkan video TikTok. Coba lagi nanti.' }, { quoted: m });
+                        }
+
+                        const videoBuffer = await axios.get(response.data.data.data[1].url, { responseType: 'arraybuffer' });
+                        fs.writeFileSync('./database/sound/sahur.mp4', Buffer.from(videoBuffer.data));
+
+                        const data = JSON.parse(await fs.promises.readFile('./database/api.json', 'utf8'));
+                        data["video"] = './database/sound/sahur.mp4';
+                        await fs.promises.writeFile('./database/api.json', JSON.stringify(data, null, 2));
+
+                        const msg = await sock.sendMessage(sender, { video: fs.readFileSync(data["video"]), ptv: true })
+                        return await sock.sendMessage(sender, { text: `✅ Video berhasil diatur sebagai alarm!` }, { quoted: msg });
+                    }
+
+                    if (!m.message.videoMessage && !(m.message.extendedTextMessage?.contextInfo?.quotedMessage?.videoMessage)) {
+                        return await sock.sendMessage(sender, { text: '📢 Kirimkan atau quote video dengan perintah *!set-alarm*' }, { quoted: m });
+                    }
+
+                    const quotedMessage = m.message.extendedTextMessage?.contextInfo?.quotedMessage?.videoMessage;
+                    const videoMessage = m.message.videoMessage || quotedMessage;
+                    if (!videoMessage) {
+                        return await sock.sendMessage(sender, { text: '⚠️ Terjadi kesalahan, pastikan Anda mengirim atau mengutip video.' }, { quoted: m });
+                    }
+
+                    const stream = await downloadContentFromMessage(videoMessage, 'video');
+                    let buffer = Buffer.from([]);
+                    for await (const chunk of stream) {
+                        buffer = Buffer.concat([buffer, chunk]);
+                    }
+
+                    fs.writeFileSync('./database/sound/sahur.mp4', buffer);
+                    const data = JSON.parse(await fs.promises.readFile('./database/api.json', 'utf8'));
+                    data["video"] = './database/sound/sahur.mp4';
+                    await fs.promises.writeFile('./database/api.json', JSON.stringify(data, null, 2));
+
+                    const msg = await sock.sendMessage(sender, { video: fs.readFileSync(data["video"]), ptv: true })
+                    await sock.sendMessage(sender, { text: `✅ Video berhasil diatur sebagai alarm!` }, { quoted: msg });
+
+                } catch (error) {
+                    console.error('❌ Error:', error);
+                    await sock.sendMessage(sender, { text: '*Terjadi kesalahan pada sistem.* Coba lagi nanti!' }, { quoted: m });
+                }
+            break;
+            case '!set-quotes':
+                if (!isOwner) return
+                const data = JSON.parse(await fs.promises.readFile('./database/api.json', 'utf8'));
+                data["quotes"] = '"' + m.message.conversation.slice(12) + '"';
+                await fs.promises.writeFile('./database/api.json', JSON.stringify(data, null, 2));
+                await sock.sendMessage(sender, { text: `✅ Quotes berhasil diatur!` }, { quoted: m });
+            break
+
             // case '!pin':
             //     if (!m.message?.extendedTextMessage?.contextInfo?.stanzaId) {
             //         return sock.sendMessage(sender, { text: '⚠️ Gunakan perintah ini dengan me-reply pesan yang ingin di-pin!' }, { quoted: m });

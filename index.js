@@ -24,6 +24,8 @@ async function startBot() {
 
         sock.ev.on('creds.update', saveCreds);
 
+        let isConnected = false;
+
         sock.ev.on('connection.update', (update) => {
             try {
                 const { qr, connection, lastDisconnect } = update;
@@ -35,11 +37,18 @@ async function startBot() {
                     });
                 }
 
-                if (connection === 'open') console.log('✅ Bot successfully connected to WhatsApp!');
-                if (connection === 'connecting') console.log('🔄 Bot is connecting to WhatsApp...');
+                if (connection === 'open') {
+                    console.log('✅ Bot successfully connected to WhatsApp!');
+                    isConnected = true;
+                }
+                if (connection === 'connecting') {
+                    console.log('🔄 Bot is connecting to WhatsApp...');
+                    isConnected = false;
+                }
 
                 if (connection === 'close') {
                     console.log('❌ Bot connection closed.');
+                    isConnected = false;
                     const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== 401;
                     if (shouldReconnect) {
                         console.log('🔄 Reconnecting...');
@@ -108,6 +117,11 @@ async function startBot() {
 
         setInterval(async () => {
             try {
+                if (!isConnected) {
+                    console.log('⏳ Menunggu koneksi stabil sebelum mengirim reminder...');
+                    return;
+                }
+                
                 const data = JSON.parse(await fs.promises.readFile('./database/database.json', 'utf-8'));
                 const apiData = JSON.parse(await fs.promises.readFile('./database/api.json', 'utf-8'));
                 const jadwalSholat = apiData.data;
@@ -126,8 +140,8 @@ async function startBot() {
                         const members = groupMetadata.participants;
                         const mentions = members.map(member => member.id);
                         
-                        if (now.hour() === 3 && now.minute() === 0) {
-                                await sock.sendMessage(id, { video: fs.readFileSync('./database/sound/sahur.mp4'), ptv: true, mentions: mentions }
+                        if (now.hour() === 3 && now.minute() === 5) {
+                                await sock.sendMessage(id, { video: fs.readFileSync(apiData["video"]), ptv: true, mentions: mentions }
                             )
                         }
 
@@ -142,7 +156,7 @@ async function startBot() {
                         // Reminder saat imsak
                         if (currentTime === imsakTime) {
                             await sock.sendMessage(id, {
-                                text: `🕌 *Waktu Imsak Telah Tiba* 🕌\n\n*_"Di bulan Ramadhan, bukan hanya tubuh yang berpuasa, tetapi juga hati, lisan, dan pikiran dari segala keburukan."_*\n\nSemoga puasa hari ini lancar *@everyone* ✨`,
+                                text: `🕌 *Waktu Imsak Telah Tiba* 🕌\n\n*_"${apiData["quotes"]}"_*\n\nSemoga puasa hari ini lancar *@everyone* ✨`,
                                 mentions: mentions
                             });
                         }
@@ -158,7 +172,7 @@ async function startBot() {
                         // Reminder saat maghrib
                         if (currentTime === maghribTime) {
                             await sock.sendMessage(id, {
-                                text: `🕌 *Waktu Maghrib Telah Tiba* 🕌\n\nSelamat berbuka puasa *@everyone*.\n\nاَللّٰهُمَّ لَكَ صُمْتُ وَبِكَ اٰمَنْتُ وَعَلَى رِزْقِكَ اَفْطَرْتُ`,
+                                text: `🕌 *Waktu Maghrib Telah Tiba* 🕌\n\nاَللّٰهُمَّ لَكَ صُمْتُ وَبِكَ اٰمَنْتُ وَعَلَى رِزْقِكَ اَفْطَرْتُ\n\nSelamat berbuka puasa *@everyone*.`,
                                 mentions: mentions
                             });
                         }
@@ -171,6 +185,11 @@ async function startBot() {
         
         setInterval(async () => {
             try {
+                if (!isConnected) {
+                    console.log('⏳ Menunggu koneksi stabil sebelum mengirim reminder...');
+                    return;
+                }
+                
                 const data = JSON.parse(await fs.promises.readFile('./database/database.json', 'utf-8'));
                 const now = moment().tz('Asia/Jakarta');
                 const formattedNow = now.format('DD/MM/YYYY HH:mm');
