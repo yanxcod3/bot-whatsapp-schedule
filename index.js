@@ -121,10 +121,6 @@ async function startBot() {
                     console.log('⏳ Menunggu koneksi stabil sebelum mengirim reminder...');
                     return;
                 }
-
-                if (now.hour() === 23 && now.minute() === 59) {
-                    await getRamadhanSchedule();
-                }
                 
                 const data = JSON.parse(await fs.promises.readFile('./database/database.json', 'utf-8'));
                 const apiData = JSON.parse(await fs.promises.readFile('./database/api.json', 'utf-8'));
@@ -132,6 +128,10 @@ async function startBot() {
                 
                 const now = moment().tz('Asia/Jakarta');
                 const currentTime = now.format('HH:mm');
+                
+                if (now.hour() === 23 && now.minute() === 59) {
+                    await getRamadhanSchedule();
+                }
 
                 const imsak15MinBefore = moment(jadwalSholat.imsak, 'HH:mm').subtract(15, 'minutes').format('HH:mm');
                 const maghrib30MinBefore = moment(jadwalSholat.maghrib, 'HH:mm').subtract(30, 'minutes').format('HH:mm');
