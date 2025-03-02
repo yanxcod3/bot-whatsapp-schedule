@@ -62,7 +62,7 @@ module.exports = async function handleMessages(sock, message) {
     const isAdmin = admins.includes(m.key.participant)
     const isOwner = m.key.participant === '6285645319608@s.whatsapp.net';
     const command = m.message?.conversation || m.message?.extendedTextMessage?.text;
-    const args = command?.toLowerCase().split(' ');
+    const args = command?.split(' ');
     
     const quotedMsg = m.message?.extendedTextMessage?.contextInfo?.quotedMessage?.extendedTextMessage ? m.message?.extendedTextMessage?.contextInfo?.quotedMessage?.extendedTextMessage?.text : m.message?.extendedTextMessage?.contextInfo?.quotedMessage?.conversation;
 
@@ -489,7 +489,22 @@ module.exports = async function handleMessages(sock, message) {
                 await sock.sendMessage(sender, { text: textMessage, mentions: mentions });
             break; 
             case '!ramadhan':
-                if (args[1] === 'on') {
+                if (args[0]) {
+                    const data = JSON.parse(await fs.promises.readFile('./database/api.json', 'utf8'));
+                    const idulFitri = moment.tz(`2025-03-31`, 'Asia/Jakarta');
+                    const selisihHari = idulFitri.diff(moment().moment.locale('id').tz('Asia/Jakarta'), 'days');
+                    
+                    let message = `✨ *MARHABAN YA RAMADHAN* ✨\n\n`;
+                        message += `*🏕 Surabaya ~ ${data['data'].tanggal}*\n`;
+                        message += `*Imsak*: ${data['data'].imsak} | *Subuh*: ${data['data'].subuh}\n`;
+                        message += `*Dzuhur*: ${data['data'].dzuhur} | *Ashar*: ${data['data'].ashar}\n`;
+                        message += `*Maghrib*: ${data['data'].maghrib} | *Isya*: ${data['data'].isya}\n\n`;
+                        message += `🌙 *${selisihHari} hari menuju Idul Fitri*\n`;
+                        message += `Tetap semangat beribadah, semoga mendapatkan berkah Ramadhan.`;
+
+                    const msg = await sock.sendMessage(sender, { video: fs.readFileSync('./database/sound/ramadhan.mp4'), ptv: true });
+                    return await sock.sendMessage(sender, { text: message }, { quoted: msg });
+                } else if (args[1]?.toLowerCase() === 'on') {
                     const data = await checkData(sender);
                     if (data[sender]['ramadhan'] === true) return await sock.sendMessage(sender, { text: '*Ramadhan mode sudah aktif!*' }, { quoted: m });
                     data[sender]['ramadhan'] = true;
@@ -497,7 +512,7 @@ module.exports = async function handleMessages(sock, message) {
                     return await sock.sendMessage(sender, { 
                         text: '*🌙 Ramadhan Mode Aktif 🌙*\n\nSelamat menjalankan ibadah puasa bagi yang menunaikan. Semoga diberikan kelancaran dan keberkahan. 🙏✨' 
                     }, { quoted: m });
-                } else if (args[1] === 'off') {
+                } else if (args[1]?.toLowerCase() === 'off') {
                     const data = await checkData(sender);
                     if (data[sender]['ramadhan'] === false) return await sock.sendMessage(sender, { text: '*Ramadhan mode sudah nonaktif!*' }, { quoted: m });
                     data[sender]['ramadhan'] = false;

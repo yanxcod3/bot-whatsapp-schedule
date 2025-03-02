@@ -121,6 +121,10 @@ async function startBot() {
                     console.log('⏳ Menunggu koneksi stabil sebelum mengirim reminder...');
                     return;
                 }
+
+                if (now.hour() === 23 && now.minute() === 59) {
+                    await getRamadhanSchedule();
+                }
                 
                 const data = JSON.parse(await fs.promises.readFile('./database/database.json', 'utf-8'));
                 const apiData = JSON.parse(await fs.promises.readFile('./database/api.json', 'utf-8'));
@@ -156,7 +160,7 @@ async function startBot() {
                         // Reminder saat imsak
                         if (currentTime === imsakTime) {
                             await sock.sendMessage(id, {
-                                text: `🕌 *Waktu Imsak Telah Tiba* 🕌\n\n*_"${apiData["quotes"]}"_*\n\nSemoga puasa hari ini lancar *@everyone* ✨`,
+                                text: `🕌 *Waktu Imsak Telah Tiba* 🕌\n\n_"${apiData["quotes"]}"_\n\nSemoga puasa hari ini lancar *@everyone*`,
                                 mentions: mentions
                             });
                         }
@@ -240,7 +244,6 @@ async function startBot() {
                 await fs.promises.writeFile('./database/database.json', JSON.stringify(data, null, 2));
         
                 if (now.hour() === 18 && now.minute() === 35) {
-                    await getRamadhanSchedule();
                     const jadwal = getTomorrowSchedule(data);
                     if (jadwal.length > 0) {
                         for (const { tomorrow, id, schedule } of jadwal) {
