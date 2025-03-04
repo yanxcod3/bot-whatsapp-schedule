@@ -17,7 +17,7 @@
 ## Clone this project
 
 ```bash
-> git clone https://github.com/yanxcod3/bot-whatsapp-schedule
+> git clone https://github.com/yanxcod3/bot-whatsapp-schedule.git
 ```
 
 ## Install the dependencies:
@@ -48,12 +48,11 @@ Jalankan skrip, lalu pindai kode QR yang muncul menggunakan WhatsApp di ponselmu
 | `!tagall`      | Menandai semua anggota dalam grup.              |   ✅    |
 | `@mentionBot`  | Memanggil bot untuk bertanya atau berinteraksi. |   ✅    |
 
-| Daily                                                 | Feature |
-| :---------------------------------------------------- | :-----: |
-| Mengingatkan tugas H-1 sebelum deadline.              |   ✅    |
-| Mengingatkan tugas 1 jam sebelum deadline.            |   ✅    |
-| Mengirim pengingat sesuai waktu yang diatur pengguna. |   ✅    |
-| Menampilkan jadwal kuliah untuk besok.                |   ✅    |
+| Daily                                      | Feature |
+| :----------------------------------------- | :-----: |
+| Mengingatkan tugas H-1 sebelum deadline.   |   ✅    |
+| Mengingatkan tugas 1 jam sebelum deadline. |   ✅    |
+| Menampilkan jadwal kuliah untuk besok.     |   ✅    |
 
 ## Features Ramadhan Kareem
 
@@ -61,12 +60,12 @@ Jalankan skrip, lalu pindai kode QR yang muncul menggunakan WhatsApp di ponselmu
 | :------------------- | :-------------------------------------------------------- | :-----: |
 | `!ramadhan [ON/OFF]` | Mengaktifkan atau menonaktifkan fitur reminder Ramadhan.  |   ✅    |
 | `!set-video`         | Mengatur video yang akan dikirim sebagai pengingat sahur. |   ✅    |
-| `!set-quotes`        | Mengatur kutipan yang akan ditampilkan saat reminder.     |   ✅    |
+| `!set-quotes`        | Mengatur quotes yang akan ditampilkan saat reminder.      |   ✅    |
 
 | Daily                                      | Feature |
 | :----------------------------------------- | :-----: |
-| Mengingatkan 15 menit sebelum imsak.       |   ✅    |
 | Mengirim video sahur pada pukul 03:00 WIB. |   ✅    |
+| Mengingatkan 15 menit sebelum imsak.       |   ✅    |
 | Mengingatkan saat waktu imsak tiba.        |   ✅    |
 | Mengingatkan 30 menit sebelum maghrib.     |   ✅    |
 | Mengingatkan saat waktu maghrib tiba.      |   ✅    |
