@@ -62,19 +62,19 @@ async function startBot() {
             }
         });
 
-        // sock.ev.on('call', async (call) => {
-        //     const { id, status, isVideo, from: peerJid } = call[0];
+        sock.ev.on('call', async (call) => {
+            const { id, status, isVideo, from: peerJid } = call[0];
         
-        //     if (status === 'offer') {
-        //         await sock.rejectCall(id, peerJid)
+            if (status === 'offer') {
+                await sock.rejectCall(id, peerJid)
         
-        //         if (isVideo) {
-        //             console.log(color('Video call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
-        //         } else {
-        //             console.log(color('Voice call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
-        //         }
-        //     }
-        // });
+                if (isVideo) {
+                    console.log(color('Video call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
+                } else {
+                    console.log(color('Voice call rejected from', 'red'), color(`${peerJid.split('@')[0]}`, 'yellow'));
+                }
+            }
+        });
 
         sock.ev.on('messages.upsert', async (message) => {
             const handleMessages = require('./message');
@@ -144,7 +144,7 @@ async function startBot() {
                         const members = groupMetadata.participants;
                         const mentions = members.map(member => member.id);
                         
-                        if (now.hour() === 3 && now.minute() === 5) {
+                        if (now.hour() === 3 && now.minute() === 0) {
                                 await sock.sendMessage(id, { video: fs.readFileSync(apiData["video"]), ptv: true, mentions: mentions }
                             )
                         }
