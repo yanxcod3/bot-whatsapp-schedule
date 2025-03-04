@@ -48,7 +48,7 @@ Jalankan skrip, lalu pindai kode QR yang muncul menggunakan WhatsApp di ponselmu
 | `!tagall`      | Menandai semua anggota dalam grup.              |   ✅    |
 | `@mentionBot`  | Memanggil bot untuk bertanya atau berinteraksi. |   ✅    |
 
-| Description                                           | Feature |
+| Daily                                                 | Feature |
 | :---------------------------------------------------- | :-----: |
 | Mengingatkan tugas H-1 sebelum deadline.              |   ✅    |
 | Mengingatkan tugas 1 jam sebelum deadline.            |   ✅    |
@@ -63,7 +63,7 @@ Jalankan skrip, lalu pindai kode QR yang muncul menggunakan WhatsApp di ponselmu
 | `!set-video`         | Mengatur video yang akan dikirim sebagai pengingat sahur. |   ✅    |
 | `!set-quotes`        | Mengatur kutipan yang akan ditampilkan saat reminder.     |   ✅    |
 
-| Description                                | Feature |
+| Daily                                      | Feature |
 | :----------------------------------------- | :-----: |
 | Mengingatkan 15 menit sebelum imsak.       |   ✅    |
 | Mengirim video sahur pada pukul 03:00 WIB. |   ✅    |
